@@ -27,11 +27,11 @@ void app_main(void)
 
     while (1)
     {
-        uint8_t temp_low = my_spi_read_register(0x1D);
-        uint8_t temp_high = my_spi_read_register(0x1E);
-        uint16_t temp = temp_high << 8 | temp_low;
-        uint16_t temp_centidegree = (temp / 132.48) + 25;
-        // printf("Gyro internal temperature: %d (internal: %d %d)\n", temp_centidegree, temp_low, temp_high);
+        uint8_t temp_high = my_spi_read_register(0x1D);
+        uint8_t temp_low = my_spi_read_register(0x1E);
+        int16_t temp_raw = temp_high << 8 | temp_low;
+        float temp_centidegree = ((float)temp_raw / 132.48f) + 25.0f;
+        printf("Gyro internal temperature: %f (internal: %d %d)\n", temp_centidegree, temp_low, temp_high);
 
         // todo SPI burst
         uint8_t gyro_x_1 = my_spi_read_register(0x25);
@@ -61,7 +61,7 @@ void app_main(void)
         // pitch = y-axis
         float roll = atan2(acc_y, acc_z) * RAD_TO_DEG;
         float pitch = atan2(-acc_x, sqrt(acc_y * acc_y + acc_z * acc_z)) * RAD_TO_DEG;
-        printf("Roll: %f      Pitch: %f\n", roll, pitch);
+        // printf("Roll: %f      Pitch: %f\n", roll, pitch);
 
         uint8_t matrix_x = 2;
         uint8_t matrix_y = 2;
@@ -89,7 +89,7 @@ void app_main(void)
             matrix_y += 1;
 
         led_strip_clear(led_strip);
-        printf("Pixel: X=%d Y=%d\n", matrix_x, matrix_y);
+        // printf("Pixel: X=%d Y=%d\n", matrix_x, matrix_y);
         my_led_matrix_set_pixel_xy(matrix_x, matrix_y);
         led_strip_refresh(led_strip);
 
