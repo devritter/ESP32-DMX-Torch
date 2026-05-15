@@ -42,3 +42,17 @@ uint8_t my_spi_read_register(uint8_t addr)
     spi_device_polling_transmit(spi, &t);
     return rx_data[1]; // Das zweite Byte enthält den Registerwert
 }
+
+esp_err_t my_spi_write_register(uint8_t addr, uint8_t data)
+{
+    // for writes, MSB must be 0 (& 0x7F to ensure that)
+    uint8_t tx_data[2] = {addr & 0x7F, data};
+
+    spi_transaction_t t = {
+        .length = 16, // 16 Bits insgesamt (8 Bit Adresse, 8 Bit Daten)
+        .tx_buffer = tx_data,
+        .rx_buffer = NULL // Wir erwarten keine Rückgabedaten beim Schreiben
+    };
+
+    return spi_device_polling_transmit(spi, &t);
+}
