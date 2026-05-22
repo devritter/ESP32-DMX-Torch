@@ -3,9 +3,14 @@
 #include "esp_log.h"
 #include "sdkconfig.h"
 
+#define LEN(x) (sizeof(x) / sizeof(x[0]))
+
+#define START_ADDR_TEMP 0x1D
+#define START_ADDR_GYRO 0x1F
+
 spi_device_handle_t spi;
 
-spi_device_handle_t my_spi_setup()
+spi_device_handle_t my_acc_gyro_setup()
 {
     spi_bus_config_t bus_cfg = {
         .mosi_io_num = 4,
@@ -28,7 +33,40 @@ spi_device_handle_t my_spi_setup()
     return ESP_OK;
 }
 
-uint8_t my_spi_read_register(uint8_t addr)
+float my_acc_gyro_read_temperature()
+{
+    uint8_t temp_high = my_acc_gyro_read(START_ADDR_TEMP);
+    uint8_t temp_low = my_acc_gyro_read(START_ADDR_TEMP + 1);
+    int16_t temp_raw = temp_high << 8 | temp_low;
+    float temp_centidegree = ((float)temp_raw / 132.48f) + 25.0f;
+    return temp_centidegree;
+}
+
+esp_err_t my_acc_read_acc_data(my_acc_data_t *out_data)
+{
+    uint8_t data[6];
+    float acc_scale_factor = 2048.0f;
+
+    esp_err_t ret = my_acc_gyro_read_burst(START_ADDR_GYRO, data, LEN(data));
+    if (ret != ESP_OK)
+    {
+        return ret;
+    }
+
+    // 1. Rohdaten sind strikt 16-Bit vorzeichenbehaftet
+    int16_t raw_x = (int16_t)((data[0] << 8) | data[1]);
+    int16_t raw_y = (int16_t)((data[2] << 8) | data[3]);
+    int16_t raw_z = (int16_t)((data[4] << 8) | data[5]);
+
+    // 2. Berechnung in 32-Bit casten, um Überlauf bei * 1000 zu verhindern
+    out_data->x = raw_x / acc_scale_factor;
+    out_data->y = raw_y / acc_scale_factor;
+    out_data->z = raw_z / acc_scale_factor;
+
+    return ESP_OK;
+}
+
+uint8_t my_acc_gyro_read(uint8_t addr)
 {
     // for writes, MSB must be 1 (| 0x80 to ensure that)
     uint8_t tx_data[2] = {addr | 0x80, 0x00};
@@ -44,7 +82,40 @@ uint8_t my_spi_read_register(uint8_t addr)
     return rx_data[1]; // Das zweite Byte enthält den Registerwert
 }
 
-esp_err_t my_spi_write_register(uint8_t addr, uint8_t data)
+esp_err_t my_acc_gyro_read_burst(uint8_t addr, uint8_t *dest, size_t len)
+{
+    if (dest == NULL || len == 0)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    size_t total_bytes = 1 + len; // add + len
+
+    uint8_t *tx_data = calloc(1, total_bytes);
+    uint8_t *rx_data = malloc(total_bytes);
+
+    tx_data[0] = addr | 0x80;
+    spi_transaction_t t = {
+        .length = total_bytes * 8, // Länge in Bits
+        .tx_buffer = tx_data,
+        .rx_buffer = rx_data,
+    };
+
+    esp_err_t ret = spi_device_polling_transmit(spi, &t);
+
+    if (ret == ESP_OK)
+    {
+        // Die Daten starten ab Index 1 (Index 0 war die Adressphase)
+        memcpy(dest, &rx_data[1], len);
+    }
+
+    free(tx_data);
+    free(rx_data);
+
+    return ret;
+}
+
+esp_err_t my_acc_gyro_write(uint8_t addr, uint8_t data)
 {
     // for writes, MSB must be 0 (& 0x7F to ensure that)
     uint8_t tx_data[2] = {addr & 0x7F, data};

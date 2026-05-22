@@ -2,6 +2,17 @@
 #include "esp_err.h"
 #include <driver/spi_master.h>
 
-spi_device_handle_t my_spi_setup();
-uint8_t my_spi_read_register(uint8_t addr);
-esp_err_t my_spi_write_register(uint8_t addr, uint8_t data);
+typedef struct
+{
+    float x;
+    float y;
+    float z;
+} my_acc_data_t;
+
+spi_device_handle_t my_acc_gyro_setup();
+float my_acc_gyro_read_temperature();
+esp_err_t my_acc_read_acc_data(my_acc_data_t *out_data);
+
+uint8_t my_acc_gyro_read(uint8_t addr);
+esp_err_t my_acc_gyro_read_burst(uint8_t addr, uint8_t *dest, size_t len);
+esp_err_t my_acc_gyro_write(uint8_t addr, uint8_t data);
