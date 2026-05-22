@@ -4,7 +4,7 @@
 #include "esp_log.h"
 #include "sdkconfig.h"
 #include "my_led_matrix.h"
-#include "my_spi.h"
+#include "my_acc_gyro.h"
 #include <math.h>
 #define RAD_TO_DEG 57.295779513f // 180 / PI
 

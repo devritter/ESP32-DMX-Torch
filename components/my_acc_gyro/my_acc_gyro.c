@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "my_spi.h"
+#include "my_acc_gyro.h"
 #include "esp_log.h"
 #include "sdkconfig.h"
 
@@ -30,7 +30,8 @@ spi_device_handle_t my_spi_setup()
 
 uint8_t my_spi_read_register(uint8_t addr)
 {
-    uint8_t tx_data[2] = {addr | 0x80, 0x00}; // MSB gesetzt für Read
+    // for writes, MSB must be 1 (| 0x80 to ensure that)
+    uint8_t tx_data[2] = {addr | 0x80, 0x00};
     uint8_t rx_data[2] = {0};
 
     spi_transaction_t t = {
