@@ -6,7 +6,8 @@
 #define LEN(x) (sizeof(x) / sizeof(x[0]))
 
 #define START_ADDR_TEMP 0x1D
-#define START_ADDR_GYRO 0x1F
+#define START_ADDR_ACCE 0x1F
+#define START_ADDR_GYRO 0x25
 
 spi_device_handle_t spi;
 
@@ -42,28 +43,16 @@ float my_acc_gyro_read_temperature()
     return temp_centidegree;
 }
 
-esp_err_t my_acc_read_acc_data(my_acc_data_t *out_data)
+esp_err_t read_xyz_internal(my_acc_gyro_xyz_t *out_data, uint8_t start_addr, float scale_factor);
+
+esp_err_t my_acc_gyro_read_acc_data(my_acc_gyro_xyz_t *out_data)
 {
-    uint8_t data[6];
-    float acc_scale_factor = 2048.0f;
+    return read_xyz_internal(out_data, START_ADDR_ACCE, 2048.0f);
+}
 
-    esp_err_t ret = my_acc_gyro_read_burst(START_ADDR_GYRO, data, LEN(data));
-    if (ret != ESP_OK)
-    {
-        return ret;
-    }
-
-    // 1. Rohdaten sind strikt 16-Bit vorzeichenbehaftet
-    int16_t raw_x = (int16_t)((data[0] << 8) | data[1]);
-    int16_t raw_y = (int16_t)((data[2] << 8) | data[3]);
-    int16_t raw_z = (int16_t)((data[4] << 8) | data[5]);
-
-    // 2. Berechnung in 32-Bit casten, um Überlauf bei * 1000 zu verhindern
-    out_data->x = raw_x / acc_scale_factor;
-    out_data->y = raw_y / acc_scale_factor;
-    out_data->z = raw_z / acc_scale_factor;
-
-    return ESP_OK;
+esp_err_t my_acc_gyro_read_gyro_data(my_acc_gyro_xyz_t *out_data)
+{
+    return read_xyz_internal(out_data, START_ADDR_GYRO, 1);
 }
 
 uint8_t my_acc_gyro_read(uint8_t addr)
@@ -113,6 +102,28 @@ esp_err_t my_acc_gyro_read_burst(uint8_t addr, uint8_t *dest, size_t len)
     free(rx_data);
 
     return ret;
+}
+
+esp_err_t read_xyz_internal(my_acc_gyro_xyz_t *out_data, uint8_t start_addr, float scale_factor)
+{
+    uint8_t data[6];
+    esp_err_t ret = my_acc_gyro_read_burst(start_addr, data, LEN(data));
+    if (ret != ESP_OK)
+    {
+        return ret;
+    }
+
+    // 1. Rohdaten sind strikt 16-Bit vorzeichenbehaftet
+    int16_t raw_x = (int16_t)((data[0] << 8) | data[1]);
+    int16_t raw_y = (int16_t)((data[2] << 8) | data[3]);
+    int16_t raw_z = (int16_t)((data[4] << 8) | data[5]);
+
+    // 2. Berechnung in 32-Bit casten, um Überlauf bei * 1000 zu verhindern
+    out_data->x = raw_x / scale_factor;
+    out_data->y = raw_y / scale_factor;
+    out_data->z = raw_z / scale_factor;
+
+    return ESP_OK;
 }
 
 esp_err_t my_acc_gyro_write(uint8_t addr, uint8_t data)

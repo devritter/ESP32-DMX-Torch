@@ -24,25 +24,21 @@ void app_main(void)
     vTaskDelay(100 / portTICK_PERIOD_MS);
 
     float acc_scale_factor = 2048.0f;
-    my_acc_data_t acc_data = {};
+    my_acc_gyro_xyz_t acc_data = {};
+    my_acc_gyro_xyz_t gyro_data = {};
 
     while (1)
     {
         // printf("Gyro internal temperature: %f\n", my_acc_gyro_read_temperature());
 
-        // todo SPI burst
-        uint8_t gyro_x_1 = my_acc_gyro_read(0x25);
-        uint8_t gyro_x_0 = my_acc_gyro_read(0x26);
-        uint8_t gyro_y_1 = my_acc_gyro_read(0x27);
-        uint8_t gyro_y_0 = my_acc_gyro_read(0x28);
-        uint8_t gyro_z_1 = my_acc_gyro_read(0x29);
-        uint8_t gyro_z_0 = my_acc_gyro_read(0x2A);
+        ESP_ERROR_CHECK(my_acc_gyro_read_gyro_data(&gyro_data));
+        printf("Gyro: %.0f %.0f %.0f\n", gyro_data.x, gyro_data.y, gyro_data.z);
 
-        ESP_ERROR_CHECK(my_acc_read_acc_data(&acc_data));
+        ESP_ERROR_CHECK(my_acc_gyro_read_acc_data(&acc_data));
         float acc_x = acc_data.x;
         float acc_y = acc_data.y;
         float acc_z = acc_data.z;
-        printf("Acc: %f %f %f\n", acc_x, acc_y, acc_z);
+        // printf("Acc: %f %f %f\n", acc_x, acc_y, acc_z);
 
         // roll = x-axis
         // pitch = y-axis
