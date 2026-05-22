@@ -11,6 +11,8 @@
 // static const char *TAG = "example";
 static led_strip_handle_t led_strip;
 
+uint8_t get_pixel_by_degree(float degree);
+
 void app_main(void)
 {
     led_strip = my_led_matrix_setup(CONFIG_BLINK_GPIO);
@@ -31,45 +33,20 @@ void app_main(void)
     {
         // printf("Gyro internal temperature: %f\n", my_acc_gyro_read_temperature());
 
-        ESP_ERROR_CHECK(my_acc_gyro_read_gyro_data(&gyro_data));
-        printf("Gyro: %.0f %.0f %.0f\n", gyro_data.x, gyro_data.y, gyro_data.z);
+        // ESP_ERROR_CHECK(my_acc_gyro_read_gyro_data(&gyro_data));
+        // printf("Gyro: %.0f %.0f %.0f\n", gyro_data.x, gyro_data.y, gyro_data.z);
 
         ESP_ERROR_CHECK(my_acc_gyro_read_acc_data(&acc_data));
-        float acc_x = acc_data.x;
-        float acc_y = acc_data.y;
-        float acc_z = acc_data.z;
-        // printf("Acc: %f %f %f\n", acc_x, acc_y, acc_z);
+        // printf("Acc: %f %f %f\n", acc_data.x, acc_data.y, acc_data.z);
 
         // roll = x-axis
         // pitch = y-axis
-        float roll = atan2(acc_y, acc_z) * RAD_TO_DEG;
-        float pitch = atan2(-acc_x, sqrt(acc_y * acc_y + acc_z * acc_z)) * RAD_TO_DEG;
+        float roll = atan2(acc_data.y, acc_data.z) * RAD_TO_DEG;
+        float pitch = atan2(-acc_data.x, sqrt(acc_data.y * acc_data.y + acc_data.z * acc_data.z)) * RAD_TO_DEG;
         // printf("Roll: %f      Pitch: %f\n", roll, pitch);
 
-        uint8_t matrix_x = 2;
-        uint8_t matrix_y = 2;
-
-        if (false)
-            ;
-        else if (pitch < -20)
-            matrix_x -= 2;
-        else if (pitch < -10)
-            matrix_x -= 1;
-        else if (pitch > +20)
-            matrix_x += 2;
-        else if (pitch > +10)
-            matrix_x += 1;
-
-        if (false)
-            ;
-        else if (roll < -20)
-            matrix_y -= 2;
-        else if (roll < -10)
-            matrix_y -= 1;
-        else if (roll > +20)
-            matrix_y += 2;
-        else if (roll > +10)
-            matrix_y += 1;
+        uint8_t matrix_x = get_pixel_by_degree(pitch);
+        uint8_t matrix_y = get_pixel_by_degree(roll);
 
         led_strip_clear(led_strip);
         // printf("Pixel: X=%d Y=%d\n", matrix_x, matrix_y);
@@ -78,4 +55,20 @@ void app_main(void)
 
         vTaskDelay(pdMS_TO_TICKS(100));
     }
+}
+
+uint8_t get_pixel_by_degree(float degree)
+{
+    uint8_t pixel = 2;
+
+    if (degree < -10)
+        pixel--;
+    if (degree < -20)
+        pixel--;
+    if (degree > 10)
+        pixel++;
+    if (degree > 20)
+        pixel++;
+
+    return pixel;
 }
