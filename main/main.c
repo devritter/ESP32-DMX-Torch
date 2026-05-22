@@ -18,13 +18,6 @@ void app_main(void)
     led_strip = my_led_matrix_setup(CONFIG_BLINK_GPIO);
     spi_device_handle_t spi_device = my_acc_gyro_setup();
 
-    uint8_t who_am_i = my_acc_gyro_read(0x75); // 0x75=WHO_AM_I
-    printf("WHO_AM_I = %d (expected: %d)\n", who_am_i, 0x47);
-
-    ESP_ERROR_CHECK(my_acc_gyro_write(0x4E, 0b00001111)); // 0x4E = Power Management
-    // 200us no writes, 45ms for the gyro
-    vTaskDelay(100 / portTICK_PERIOD_MS);
-
     float acc_scale_factor = 2048.0f;
     my_acc_gyro_xyz_t acc_data = {};
     my_acc_gyro_xyz_t gyro_data = {};

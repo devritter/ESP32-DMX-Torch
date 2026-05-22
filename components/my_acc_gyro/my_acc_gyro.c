@@ -1,7 +1,9 @@
 #include <stdio.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "sdkconfig.h"
 #include "my_acc_gyro.h"
 #include "esp_log.h"
-#include "sdkconfig.h"
 
 #define LEN(x) (sizeof(x) / sizeof(x[0]))
 
@@ -30,6 +32,14 @@ spi_device_handle_t my_acc_gyro_setup()
         .queue_size = 7,
     };
     ESP_ERROR_CHECK(spi_bus_add_device(SPI2_HOST, &devcfg, &spi));
+
+    // uint8_t who_am_i = my_acc_gyro_read(0x75); // 0x75=WHO_AM_I
+    // printf("WHO_AM_I = %d (expected: %d)\n", who_am_i, 0x47);
+
+    ESP_ERROR_CHECK(my_acc_gyro_write(0x4E, 0b00001111)); // 0x4E = Power Management
+
+    // 200us no writes, 45ms for the gyro
+    vTaskDelay(100 / portTICK_PERIOD_MS);
 
     return ESP_OK;
 }
