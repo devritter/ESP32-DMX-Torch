@@ -33,8 +33,11 @@ spi_device_handle_t my_acc_gyro_setup()
     };
     ESP_ERROR_CHECK(spi_bus_add_device(SPI2_HOST, &devcfg, &spi));
 
-    // uint8_t who_am_i = my_acc_gyro_read(0x75); // 0x75=WHO_AM_I
-    // printf("WHO_AM_I = %d (expected: %d)\n", who_am_i, 0x47);
+    // reset device
+    my_acc_gyro_write(0x11, 0x01);
+
+    uint8_t who_am_i = my_acc_gyro_read(0x75); // 0x75=WHO_AM_I
+    printf("WHO_AM_I = %d (expected: %d)\n", who_am_i, 0x47);
 
     ESP_ERROR_CHECK(my_acc_gyro_write(0x4E, 0b00001111)); // 0x4E = Power Management
 
@@ -67,7 +70,7 @@ esp_err_t my_acc_gyro_read_gyro_data(my_acc_gyro_xyz_t *out_data)
 
 uint8_t my_acc_gyro_read(uint8_t addr)
 {
-    // for writes, MSB must be 1 (| 0x80 to ensure that)
+    // for reads, MSB must be 1 (| 0x80 to ensure that)
     uint8_t tx_data[2] = {addr | 0x80, 0x00};
     uint8_t rx_data[2] = {0};
 
@@ -77,7 +80,7 @@ uint8_t my_acc_gyro_read(uint8_t addr)
         .rx_buffer = rx_data,
     };
 
-    spi_device_polling_transmit(spi, &t);
+    ESP_ERROR_CHECK(spi_device_polling_transmit(spi, &t));
     return rx_data[1]; // Das zweite Byte enthält den Registerwert
 }
 
@@ -88,14 +91,14 @@ esp_err_t my_acc_gyro_read_burst(uint8_t addr, uint8_t *dest, size_t len)
         return ESP_ERR_INVALID_ARG;
     }
 
-    size_t total_bytes = 1 + len; // add + len
+    size_t total_bytes = 1 + len; // addr + len
 
     uint8_t *tx_data = calloc(1, total_bytes);
     uint8_t *rx_data = malloc(total_bytes);
 
     tx_data[0] = addr | 0x80;
     spi_transaction_t t = {
-        .length = total_bytes * 8, // Länge in Bits
+        .length = total_bytes * 8, // length in bits
         .tx_buffer = tx_data,
         .rx_buffer = rx_data,
     };
@@ -128,7 +131,6 @@ esp_err_t read_xyz_internal(my_acc_gyro_xyz_t *out_data, uint8_t start_addr, flo
     int16_t raw_y = (int16_t)((data[2] << 8) | data[3]);
     int16_t raw_z = (int16_t)((data[4] << 8) | data[5]);
 
-    // 2. Berechnung in 32-Bit casten, um Überlauf bei * 1000 zu verhindern
     out_data->x = raw_x / scale_factor;
     out_data->y = raw_y / scale_factor;
     out_data->z = raw_z / scale_factor;
