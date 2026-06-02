@@ -14,9 +14,9 @@ spi_device_handle_t spi;
 spi_device_handle_t my_acc_gyro_setup()
 {
     spi_bus_config_t bus_cfg = {
-        .mosi_io_num = 4,
-        .miso_io_num = 7,
-        .sclk_io_num = 10,
+        .mosi_io_num = 4, // IO4
+        .miso_io_num = 7, // IO7
+        .sclk_io_num = 10, // IO10
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
         .max_transfer_sz = 0 // DMA default
