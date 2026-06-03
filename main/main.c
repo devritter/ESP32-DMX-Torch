@@ -41,6 +41,7 @@ void app_main(void)
         .pan_coarse = 127,
         .tilt_coarse = 127,
         .shutter = 255,
+        .color = 15,
         .speed = 127,
         .dimmer = 25};
 
@@ -54,14 +55,14 @@ void app_main(void)
         ESP_ERROR_CHECK(my_acc_gyro_read_acc_data(&acc_data));
         // printf("Acc: %f %f %f\n", acc_data.x, acc_data.y, acc_data.z);
 
-        // roll = x-axis
-        // pitch = y-axis
+        // roll = x-axis, quasi die Achse des USB-C-Anschlusses
+        // pitch = y-axis, quasi die Achse ESP-Pixelmatrix
         float roll = atan2(acc_data.y, acc_data.z) * RAD_TO_DEG;
         float pitch = atan2(-acc_data.x, sqrt(acc_data.y * acc_data.y + acc_data.z * acc_data.z)) * RAD_TO_DEG;
-        // printf("Roll: %f      Pitch: %f\n", roll, pitch);
+        printf("Roll: %f      Pitch: %f\n", roll, pitch);
 
         update_pixel_matrix(pitch, roll);
-        update_movinghead(&movinghead, pitch, roll);
+        update_movinghead(&movinghead, pitch - 40, roll + 90);
 
         vTaskDelay(pdMS_TO_TICKS(100));
     }
