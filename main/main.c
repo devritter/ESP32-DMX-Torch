@@ -4,7 +4,7 @@
 #include "esp_log.h"
 #include "sdkconfig.h"
 #include "my_led_matrix.h"
-#include "my_acc_gyro.h"
+#include "imu.h"
 #include "dmx.h"
 #include "movinghead.h"
 #include <math.h>
@@ -24,15 +24,15 @@ void app_main(void)
 {
     led_strip = my_led_matrix_setup(CONFIG_BLINK_GPIO);
     my_led_matrix_set_rgb(0, 0, 16);
-    spi_device_handle_t spi_device = my_acc_gyro_setup();
 
-    // ESP_ERROR_CHECK(my_dmx_init());
+    imu_init();
+    ESP_ERROR_CHECK(imu_test_connection());
 
     dmx_init();
-    mh_x25_demo(1);
+
+    // mh_x25_demo(1);
     // movinghead_test();
 
-    float acc_scale_factor = 2048.0f;
     my_acc_gyro_xyz_t acc_data = {};
     my_acc_gyro_xyz_t gyro_data = {};
     mh_x25_t movinghead = {
@@ -47,13 +47,10 @@ void app_main(void)
 
     while (1)
     {
-        printf("Gyro WHO_AM_I: %u\n", my_acc_gyro_read(0x75));
-        printf("Gyro internal temperature: %f\n", my_acc_gyro_read_temperature());
+        ESP_ERROR_CHECK(imu_read_gyro_data(&gyro_data));
+        printf("Gyro: %.0f %.0f %.0f\n", gyro_data.x, gyro_data.y, gyro_data.z);
 
-        // ESP_ERROR_CHECK(my_acc_gyro_read_gyro_data(&gyro_data));
-        // printf("Gyro: %.0f %.0f %.0f\n", gyro_data.x, gyro_data.y, gyro_data.z);
-
-        ESP_ERROR_CHECK(my_acc_gyro_read_acc_data(&acc_data));
+        ESP_ERROR_CHECK(imu_read_acc_data(&acc_data));
         // printf("Acc: %f %f %f\n", acc_data.x, acc_data.y, acc_data.z);
 
         // roll = x-axis, quasi die Achse des USB-C-Anschlusses
@@ -64,9 +61,6 @@ void app_main(void)
 
         update_pixel_matrix(pitch, roll);
         update_movinghead(&movinghead, pitch - 40, roll + 90);
-
-        // dmx_data[DMX_COLOR_INDEX] = matrix_x * 20 + matrix_y * 20;
-        // my_dmx_send_frame(dmx_data, LEN(dmx_data));
 
         vTaskDelay(pdMS_TO_TICKS(100));
     }
