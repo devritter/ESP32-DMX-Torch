@@ -34,5 +34,5 @@ typedef struct
     uint8_t special;  // Kanal 12: Funktionen / Reset / Interne Programme (0-255)
 } mh_x25_t;
 
-void movinghead_test(void);
+void mh_x25_demo(uint16_t start_address);
 void mh_x25_fill_buffer(const mh_x25_t *movinghead, uint8_t *dmx_buffer);

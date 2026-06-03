@@ -31,6 +31,7 @@ void app_main(void)
     vTaskDelay(100 / portTICK_PERIOD_MS);
 
     dmx_init();
+    mh_x25_demo(1);
     // movinghead_test();
 
     float acc_scale_factor = 2048.0f;
@@ -42,6 +43,7 @@ void app_main(void)
         .tilt_coarse = 127,
         .shutter = 255,
         .color = 15,
+        .gobo = 60, // 60 = kleiner Punkt
         .speed = 127,
         .dimmer = 25};
 
@@ -59,7 +61,7 @@ void app_main(void)
         // pitch = y-axis, quasi die Achse ESP-Pixelmatrix
         float roll = atan2(acc_data.y, acc_data.z) * RAD_TO_DEG;
         float pitch = atan2(-acc_data.x, sqrt(acc_data.y * acc_data.y + acc_data.z * acc_data.z)) * RAD_TO_DEG;
-        printf("Roll: %f      Pitch: %f\n", roll, pitch);
+        printf("Roll: \t%f  \tPitch: \t%f\n", roll, pitch);
 
         update_pixel_matrix(pitch, roll);
         update_movinghead(&movinghead, pitch - 40, roll + 90);
