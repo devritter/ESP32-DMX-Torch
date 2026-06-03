@@ -6,6 +6,7 @@
 #include "my_led_matrix.h"
 #include "my_acc_gyro.h"
 #include "dmx.h"
+#include "movinghead.h"
 #include <math.h>
 #define RAD_TO_DEG 57.295779513f // 180 / PI
 
@@ -26,8 +27,8 @@ void app_main(void)
     // 200us no writes, 45ms for the gyro
     vTaskDelay(100 / portTICK_PERIOD_MS);
 
-    dmx_test();
-    // dmx_init();
+    dmx_init();
+    movinghead_test();
 
     float acc_scale_factor = 2048.0f;
     my_acc_gyro_xyz_t acc_data = {};
