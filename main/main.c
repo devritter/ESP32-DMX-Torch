@@ -5,7 +5,8 @@
 #include "sdkconfig.h"
 #include "my_led_matrix.h"
 #include "my_acc_gyro.h"
-#include "my_dmx.h"
+#include "dmx.h"
+#include "movinghead.h"
 #include <math.h>
 #define RAD_TO_DEG 57.295779513f // 180 / PI
 #define DMX_COLOR_INDEX (6 - 1)
@@ -13,8 +14,11 @@
 
 // static const char *TAG = "example";
 static led_strip_handle_t led_strip;
+static uint8_t dmx_buffer[513] = {0};
 
 uint8_t get_pixel_by_degree(float degree);
+void update_pixel_matrix(float pitch, float roll);
+void update_movinghead(mh_x25_t *movinghead, float pitch, float roll);
 
 void app_main(void)
 {
@@ -24,10 +28,22 @@ void app_main(void)
 
     // ESP_ERROR_CHECK(my_dmx_init());
 
+    dmx_init();
+    mh_x25_demo(1);
+    // movinghead_test();
+
     float acc_scale_factor = 2048.0f;
     my_acc_gyro_xyz_t acc_data = {};
     my_acc_gyro_xyz_t gyro_data = {};
-    uint8_t dmx_data[] = {127, 127, 0, 0, 25, 0};
+    mh_x25_t movinghead = {
+        .start_address = 1,
+        .pan_coarse = 127,
+        .tilt_coarse = 127,
+        .shutter = 255,
+        .color = 15,
+        .gobo = 60, // 60 = kleiner Punkt
+        .speed = 127,
+        .dimmer = 25};
 
     while (1)
     {
@@ -40,25 +56,38 @@ void app_main(void)
         ESP_ERROR_CHECK(my_acc_gyro_read_acc_data(&acc_data));
         // printf("Acc: %f %f %f\n", acc_data.x, acc_data.y, acc_data.z);
 
-        // roll = x-axis
-        // pitch = y-axis
+        // roll = x-axis, quasi die Achse des USB-C-Anschlusses
+        // pitch = y-axis, quasi die Achse ESP-Pixelmatrix
         float roll = atan2(acc_data.y, acc_data.z) * RAD_TO_DEG;
         float pitch = atan2(-acc_data.x, sqrt(acc_data.y * acc_data.y + acc_data.z * acc_data.z)) * RAD_TO_DEG;
-        // printf("Roll: %f      Pitch: %f\n", roll, pitch);
+        printf("Roll: \t%f  \tPitch: \t%f\n", roll, pitch);
 
-        uint8_t matrix_x = get_pixel_by_degree(pitch);
-        uint8_t matrix_y = get_pixel_by_degree(roll);
-
-        led_strip_clear(led_strip);
-        // printf("Pixel: X=%d Y=%d\n", matrix_x, matrix_y);
-        my_led_matrix_set_pixel_xy(matrix_x, matrix_y);
-        led_strip_refresh(led_strip);
+        update_pixel_matrix(pitch, roll);
+        update_movinghead(&movinghead, pitch - 40, roll + 90);
 
         // dmx_data[DMX_COLOR_INDEX] = matrix_x * 20 + matrix_y * 20;
         // my_dmx_send_frame(dmx_data, LEN(dmx_data));
 
         vTaskDelay(pdMS_TO_TICKS(100));
     }
+}
+
+void update_movinghead(mh_x25_t *movinghead, float pitch, float roll)
+{
+    movinghead->pan_coarse = 127 + pitch;
+    movinghead->tilt_coarse = 127 + roll;
+    mh_x25_fill_buffer(movinghead, dmx_buffer);
+    dmx_send(dmx_buffer, 20); // 20 channels are sufficcient for now
+}
+
+void update_pixel_matrix(float pitch, float roll)
+{
+    uint8_t matrix_x = get_pixel_by_degree(pitch);
+    uint8_t matrix_y = get_pixel_by_degree(roll);
+
+    led_strip_clear(led_strip);
+    my_led_matrix_set_pixel_xy(matrix_x, matrix_y);
+    led_strip_refresh(led_strip);
 }
 
 uint8_t get_pixel_by_degree(float degree)
