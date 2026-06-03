@@ -5,6 +5,7 @@
 #include "sdkconfig.h"
 #include "my_led_matrix.h"
 #include "my_acc_gyro.h"
+#include "dmx.h"
 #include <math.h>
 #define RAD_TO_DEG 57.295779513f // 180 / PI
 
@@ -24,6 +25,9 @@ void app_main(void)
     ESP_ERROR_CHECK(my_acc_gyro_write(0x4E, 0b00001111)); // 0x4E = Power Management
     // 200us no writes, 45ms for the gyro
     vTaskDelay(100 / portTICK_PERIOD_MS);
+
+    dmx_test();
+    // dmx_init();
 
     float acc_scale_factor = 2048.0f;
     my_acc_gyro_xyz_t acc_data = {};

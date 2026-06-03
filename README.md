@@ -23,8 +23,12 @@ The ESP32 acts as an interactive controller, making the moving head behave like 
 * ESP32-C3 Board (see [Book Homepage](https://ritschel.at/das-board-speziell-zum-buch/))
   * includes a 5x5 WS2812b LED Matrix
 * Stairville MH-X25 Moving Head (see [PDF](docs/stairville-mh-x25-manual.pdf))
+  * DMX Start Address: 001
+  * 12-channel mode (`A-Ch` at its display)
 * GME12864-11 OLED Screen (see [PDF](docs/GME12864-11%201.pdf))
 
 ## Important
 
-* When using the ESP32-C3 book-development-board, ensure you have the Jumper at J1 at the right place to enable Acceleartor-Chip-Select!
+* When using the ESP32-C3 book-development-board
+  * ensure you have the Jumper at J1 at the right place to enable Acceleartor-Chip-Select!
+  * ensure that IO9 is connected to the RS485-DIR-PIN on Jumper 2, H8
