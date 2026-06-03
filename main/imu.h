@@ -11,7 +11,7 @@ typedef struct
     float z;
 } my_acc_gyro_xyz_t;
 
-spi_device_handle_t imu_init(void);
+void imu_init(spi_device_handle_t device);
 esp_err_t imu_test_connection(void);
 
 float imu_read_temperature();

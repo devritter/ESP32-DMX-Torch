@@ -4,6 +4,7 @@
 #include "sdkconfig.h"
 #include "imu.h"
 #include "esp_log.h"
+#include "utils.h"
 
 #define LEN(x) (sizeof(x) / sizeof(x[0]))
 
@@ -13,37 +14,18 @@
 #define START_ADDR_ACCE 0x1F
 #define START_ADDR_GYRO 0x25
 
-spi_device_handle_t spi;
+static spi_device_handle_t spi;
 
-spi_device_handle_t imu_init()
+void imu_init(spi_device_handle_t device)
 {
-    spi_bus_config_t bus_cfg = {
-        .mosi_io_num = 4,  // IO4
-        .miso_io_num = 7,  // IO7
-        .sclk_io_num = 10, // IO10
-        .quadwp_io_num = -1,
-        .quadhd_io_num = -1,
-        .max_transfer_sz = 0 // DMA default
-    };
-    ESP_ERROR_CHECK(spi_bus_initialize(SPI2_HOST, &bus_cfg, SPI_DMA_CH_AUTO));
-
-    spi_device_interface_config_t devcfg = {
-        .clock_speed_hz = 10 * 1000 * 1000, // 10 MHz
-        .mode = 0,
-        .spics_io_num = 1, // Pin13 = IO1
-        .queue_size = 7,
-    };
-    ESP_ERROR_CHECK(spi_bus_add_device(SPI2_HOST, &devcfg, &spi));
-
+    spi = device;
     // reset device
     // my_acc_gyro_write(0x11, 0x01);
 
     ESP_ERROR_CHECK(imu_write(START_ADDR_POWER_MGMT, 0b00001111)); // 0x4E = Power Management
 
     // 200us no writes, 45ms for the gyro
-    vTaskDelay(100 / portTICK_PERIOD_MS);
-
-    return ESP_OK;
+    sleep_ms(50);
 }
 
 esp_err_t imu_test_connection()

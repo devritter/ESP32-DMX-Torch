@@ -1,13 +1,15 @@
 #include <stdio.h>
+#include <math.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "sdkconfig.h"
 #include "my_led_matrix.h"
+#include "my_spi.h"
 #include "imu.h"
 #include "dmx.h"
 #include "movinghead.h"
-#include <math.h>
+#include "utils.h"
 #define RAD_TO_DEG 57.295779513f // 180 / PI
 #define DMX_COLOR_INDEX (6 - 1)
 #define LEN(x) (sizeof(x) / sizeof(x[0]))
@@ -24,8 +26,9 @@ void app_main(void)
 {
     led_strip = my_led_matrix_setup(CONFIG_BLINK_GPIO);
     my_led_matrix_set_rgb(0, 0, 16);
+    spi_device_handle_t imu_spi_device = my_spi_init_for_imu();
 
-    imu_init();
+    imu_init(imu_spi_device);
     ESP_ERROR_CHECK(imu_test_connection());
 
     dmx_init();
@@ -62,7 +65,7 @@ void app_main(void)
         update_pixel_matrix(pitch, roll);
         update_movinghead(&movinghead, pitch - 40, roll + 90);
 
-        vTaskDelay(pdMS_TO_TICKS(100));
+        sleep_ms(100);
     }
 }
 
