@@ -21,6 +21,7 @@ static uint8_t dmx_buffer[513] = {0};
 uint8_t get_pixel_by_degree(float degree);
 void update_pixel_matrix(float pitch, float roll);
 void update_movinghead(mh_x25_t *movinghead, float pitch, float roll);
+void teleplot_init();
 
 void app_main(void)
 {
@@ -36,8 +37,8 @@ void app_main(void)
     // mh_x25_demo(1);
     // movinghead_test();
 
-    my_acc_gyro_xyz_t acc_data = {};
-    my_acc_gyro_xyz_t gyro_data = {};
+    imu_xyz_t acc_data = {};
+    imu_xyz_t gyro_data = {};
     mh_x25_t movinghead = {
         .start_address = 1,
         .pan_coarse = 127,
@@ -48,22 +49,32 @@ void app_main(void)
         .speed = 127,
         .dimmer = 25};
 
+    teleplot_init();
+
     while (1)
     {
         ESP_ERROR_CHECK(imu_read_gyro_data(&gyro_data));
-        printf("Gyro: %.0f %.0f %.0f\n", gyro_data.x, gyro_data.y, gyro_data.z);
+        // printf("Gyro: \t%.0f \t%.0f \t%.0f\n", gyro_data.x, gyro_data.y, gyro_data.z);
+        imu_teleplot("Gyro_", &gyro_data);
 
         ESP_ERROR_CHECK(imu_read_acc_data(&acc_data));
-        // printf("Acc: %f %f %f\n", acc_data.x, acc_data.y, acc_data.z);
+        // printf("Acc: \t%f \t%f \t%f\n", acc_data.x, acc_data.y, acc_data.z);
+        imu_teleplot("Acc_", &acc_data);
 
         // roll = x-axis, quasi die Achse des USB-C-Anschlusses
         // pitch = y-axis, quasi die Achse ESP-Pixelmatrix
-        float roll = atan2(acc_data.y, acc_data.z) * RAD_TO_DEG;
-        float pitch = atan2(-acc_data.x, sqrt(acc_data.y * acc_data.y + acc_data.z * acc_data.z)) * RAD_TO_DEG;
-        printf("Roll: \t%f  \tPitch: \t%f\n", roll, pitch);
+        float roll_rad = atan2(acc_data.y, acc_data.z);
+        float pitch_rad = atan2(-acc_data.x, sqrt(acc_data.y * acc_data.y + acc_data.z * acc_data.z));
+        float roll_deg = roll_rad * RAD_TO_DEG;
+        float pitch_deg = pitch_rad * RAD_TO_DEG;
+        // printf("Roll: \t%f  \tPitch: \t%f\n", roll, pitch);
 
-        update_pixel_matrix(pitch, roll);
-        update_movinghead(&movinghead, pitch - 40, roll + 90);
+        // printf(">traj:%f:%f|xy\n", pitch, roll);
+        printf(">3D|cube:P:0:0:0:R:%f:%f:\n", pitch_rad, roll_rad);
+        update_pixel_matrix(pitch_deg, roll_deg);
+        update_movinghead(&movinghead, pitch_deg - 40, roll_deg + 90);
+
+        // printf(">3D|movinghead:R:%f:%f:%f\n", pitch_rad, roll_rad);
 
         sleep_ms(100);
     }
@@ -101,4 +112,23 @@ uint8_t get_pixel_by_degree(float degree)
         pixel++;
 
     return pixel;
+}
+
+void teleplot_init()
+{
+    printf("wait some time for teleplot...\n");
+
+    update_pixel_matrix(-25, -25);
+    sleep_ms(1000);
+    update_pixel_matrix(-15, -15);
+    sleep_ms(1000);
+    update_pixel_matrix(0, 0);
+    sleep_ms(1000);
+    update_pixel_matrix(15, 15);
+    sleep_ms(1000);
+    update_pixel_matrix(25, 25);
+    sleep_ms(1000);
+
+    printf(">3D|cube:S:cube:P:0:0:0:W:7:H:1:D:5:C:blue\n");
+    // printf(">3D|movinghead:S:cube:P:0:10:0:W:10:H:2:D:2:C:red\n");
 }

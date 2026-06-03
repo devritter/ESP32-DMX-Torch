@@ -15,6 +15,7 @@
 #define START_ADDR_GYRO 0x25
 
 static spi_device_handle_t spi;
+static esp_err_t read_xyz_internal(imu_xyz_t *out_data, uint8_t start_addr, float scale_factor);
 
 void imu_init(spi_device_handle_t device)
 {
@@ -50,14 +51,12 @@ float imu_read_temperature()
     return temp_centidegree;
 }
 
-esp_err_t read_xyz_internal(my_acc_gyro_xyz_t *out_data, uint8_t start_addr, float scale_factor);
-
-esp_err_t imu_read_acc_data(my_acc_gyro_xyz_t *out_data)
+esp_err_t imu_read_acc_data(imu_xyz_t *out_data)
 {
     return read_xyz_internal(out_data, START_ADDR_ACCE, 2048.0f);
 }
 
-esp_err_t imu_read_gyro_data(my_acc_gyro_xyz_t *out_data)
+esp_err_t imu_read_gyro_data(imu_xyz_t *out_data)
 {
     return read_xyz_internal(out_data, START_ADDR_GYRO, 1);
 }
@@ -111,7 +110,15 @@ esp_err_t imu_read_burst(uint8_t addr, uint8_t *dest, size_t len)
     return ret;
 }
 
-esp_err_t read_xyz_internal(my_acc_gyro_xyz_t *out_data, uint8_t start_addr, float scale_factor)
+static void check_clipping(int16_t value)
+{
+    if (value == INT16_MIN || value == INT16_MAX)
+    {
+        printf("!!! IMU sensor clipped value !!!\n");
+    }
+}
+
+static esp_err_t read_xyz_internal(imu_xyz_t *out_data, uint8_t start_addr, float scale_factor)
 {
     uint8_t data[6];
     esp_err_t ret = imu_read_burst(start_addr, data, LEN(data));
@@ -124,6 +131,10 @@ esp_err_t read_xyz_internal(my_acc_gyro_xyz_t *out_data, uint8_t start_addr, flo
     int16_t raw_x = (int16_t)((data[0] << 8) | data[1]);
     int16_t raw_y = (int16_t)((data[2] << 8) | data[3]);
     int16_t raw_z = (int16_t)((data[4] << 8) | data[5]);
+
+    check_clipping(raw_x);
+    check_clipping(raw_y);
+    check_clipping(raw_z);
 
     out_data->x = raw_x / scale_factor;
     out_data->y = raw_y / scale_factor;
@@ -144,4 +155,11 @@ esp_err_t imu_write(uint8_t addr, uint8_t data)
     };
 
     return spi_device_polling_transmit(spi, &t);
+}
+
+void imu_teleplot(char *prefix, imu_xyz_t *data)
+{
+    printf(">%sx:%f\n", prefix, data->x);
+    printf(">%sy:%f\n", prefix, data->y);
+    printf(">%sz:%f\n", prefix, data->z);
 }

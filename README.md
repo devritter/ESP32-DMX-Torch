@@ -32,3 +32,7 @@ The ESP32 acts as an interactive controller, making the moving head behave like 
 * When using the ESP32-C3 book-development-board
   * ensure you have the Jumper at J1 at the right place to enable Acceleartor-Chip-Select!
   * ensure that IO9 is connected to the RS485-DIR-PIN on Jumper 2, H8
+
+## Useful stuff
+
+* Teleplot VSCode extension: to visualize the raw data and even 3d scene!
