@@ -12,8 +12,11 @@
 
 // static const char *TAG = "example";
 static led_strip_handle_t led_strip;
+static uint8_t dmx_buffer[513] = {0};
 
 uint8_t get_pixel_by_degree(float degree);
+void update_pixel_matrix(float pitch, float roll);
+void update_movinghead(mh_x25_t *movinghead, float pitch, float roll);
 
 void app_main(void)
 {
@@ -28,11 +31,18 @@ void app_main(void)
     vTaskDelay(100 / portTICK_PERIOD_MS);
 
     dmx_init();
-    movinghead_test();
+    // movinghead_test();
 
     float acc_scale_factor = 2048.0f;
     my_acc_gyro_xyz_t acc_data = {};
     my_acc_gyro_xyz_t gyro_data = {};
+    mh_x25_t movinghead = {
+        .start_address = 1,
+        .pan_coarse = 127,
+        .tilt_coarse = 127,
+        .shutter = 255,
+        .speed = 127,
+        .dimmer = 25};
 
     while (1)
     {
@@ -50,16 +60,29 @@ void app_main(void)
         float pitch = atan2(-acc_data.x, sqrt(acc_data.y * acc_data.y + acc_data.z * acc_data.z)) * RAD_TO_DEG;
         // printf("Roll: %f      Pitch: %f\n", roll, pitch);
 
-        uint8_t matrix_x = get_pixel_by_degree(pitch);
-        uint8_t matrix_y = get_pixel_by_degree(roll);
-
-        led_strip_clear(led_strip);
-        // printf("Pixel: X=%d Y=%d\n", matrix_x, matrix_y);
-        my_led_matrix_set_pixel_xy(matrix_x, matrix_y);
-        led_strip_refresh(led_strip);
+        update_pixel_matrix(pitch, roll);
+        update_movinghead(&movinghead, pitch, roll);
 
         vTaskDelay(pdMS_TO_TICKS(100));
     }
+}
+
+void update_movinghead(mh_x25_t *movinghead, float pitch, float roll)
+{
+    movinghead->pan_coarse = 127 + pitch;
+    movinghead->tilt_coarse = 127 + roll;
+    mh_x25_fill_buffer(movinghead, dmx_buffer);
+    dmx_send(dmx_buffer, 20); // 20 channels are sufficcient for now
+}
+
+void update_pixel_matrix(float pitch, float roll)
+{
+    uint8_t matrix_x = get_pixel_by_degree(pitch);
+    uint8_t matrix_y = get_pixel_by_degree(roll);
+
+    led_strip_clear(led_strip);
+    my_led_matrix_set_pixel_xy(matrix_x, matrix_y);
+    led_strip_refresh(led_strip);
 }
 
 uint8_t get_pixel_by_degree(float degree)

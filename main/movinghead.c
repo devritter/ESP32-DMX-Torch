@@ -36,3 +36,21 @@ void movinghead_test(void)
         vTaskDelay(pdMS_TO_TICKS(2500));
     }
 }
+
+void mh_x25_fill_buffer(const mh_x25_t *movinghead, uint8_t *dmx_buffer) {
+    // Array-Index berechnen (DMX-Adresse minus 1)
+    uint16_t base = movinghead->start_address - 1;
+
+    dmx_buffer[base + 0]  = movinghead->pan_coarse;
+    dmx_buffer[base + 1]  = movinghead->tilt_coarse;
+    dmx_buffer[base + 2]  = movinghead->pan_fine;
+    dmx_buffer[base + 3]  = movinghead->tilt_fine;
+    dmx_buffer[base + 4]  = movinghead->speed;
+    dmx_buffer[base + 5]  = movinghead->color;
+    dmx_buffer[base + 6]  = movinghead->shutter;
+    dmx_buffer[base + 7]  = movinghead->dimmer;
+    dmx_buffer[base + 8]  = movinghead->gobo;
+    dmx_buffer[base + 9]  = movinghead->gobo_rot;
+    dmx_buffer[base + 10] = movinghead->settings;
+    dmx_buffer[base + 11] = movinghead->special;
+}
