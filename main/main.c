@@ -18,10 +18,16 @@
 static led_strip_handle_t led_strip;
 static uint8_t dmx_buffer[513] = {0};
 
-uint8_t get_pixel_by_degree(float degree);
-void update_pixel_matrix(float pitch, float roll);
-void update_movinghead(mh_x25_t *movinghead, float pitch, float roll);
-void teleplot_init();
+static imu_xyz_t acc_data_filtered = {};
+static imu_xyz_t gyro_data_filtered = {};
+static imu_xyz_t acc_data_raw = {};
+static imu_xyz_t gyro_data_raw = {};
+
+static uint8_t get_pixel_by_degree(float degree);
+static void update_pixel_matrix(float pitch, float roll);
+static void update_movinghead(mh_x25_t *movinghead, float pitch, float roll);
+static void teleplot_init();
+static void filter(imu_xyz_t *filtered, imu_xyz_t *new_data);
 
 void app_main(void)
 {
@@ -37,8 +43,6 @@ void app_main(void)
     // mh_x25_demo(1);
     // movinghead_test();
 
-    imu_xyz_t acc_data = {};
-    imu_xyz_t gyro_data = {};
     mh_x25_t movinghead = {
         .start_address = 1,
         .pan_coarse = 127,
@@ -53,34 +57,41 @@ void app_main(void)
 
     while (1)
     {
-        ESP_ERROR_CHECK(imu_read_gyro_data(&gyro_data));
+        ESP_ERROR_CHECK(imu_read_gyro_data(&gyro_data_raw));
+        filter(&gyro_data_filtered, &gyro_data_raw);
         // printf("Gyro: \t%.0f \t%.0f \t%.0f\n", gyro_data.x, gyro_data.y, gyro_data.z);
-        imu_teleplot("Gyro_", &gyro_data);
+        imu_teleplot("Gyro_raw_", &gyro_data_raw);
+        imu_teleplot("Gyro_filtered_", &gyro_data_filtered);
 
-        ESP_ERROR_CHECK(imu_read_acc_data(&acc_data));
+        ESP_ERROR_CHECK(imu_read_acc_data(&acc_data_raw));
+        filter(&acc_data_filtered, &acc_data_raw);
         // printf("Acc: \t%f \t%f \t%f\n", acc_data.x, acc_data.y, acc_data.z);
-        imu_teleplot("Acc_", &acc_data);
+        imu_teleplot("Acc_raw_", &acc_data_raw);
+        imu_teleplot("Acc_filtered_", &acc_data_filtered);
 
         // roll = x-axis, quasi die Achse des USB-C-Anschlusses
         // pitch = y-axis, quasi die Achse ESP-Pixelmatrix
-        float roll_rad = atan2(acc_data.y, acc_data.z);
-        float pitch_rad = atan2(-acc_data.x, sqrt(acc_data.y * acc_data.y + acc_data.z * acc_data.z));
-        float roll_deg = roll_rad * RAD_TO_DEG;
-        float pitch_deg = pitch_rad * RAD_TO_DEG;
+        float pan_rad = atan2(acc_data_filtered.y, acc_data_filtered.z);
+        float tilt_rad = atan2(-acc_data_filtered.x, sqrt(acc_data_filtered.y * acc_data_filtered.y + acc_data_filtered.z * acc_data_filtered.z));
+        float pan_deg = pan_rad * RAD_TO_DEG;
+        float tilt_deg = tilt_rad * RAD_TO_DEG;
         // printf("Roll: \t%f  \tPitch: \t%f\n", roll, pitch);
 
         // printf(">traj:%f:%f|xy\n", pitch, roll);
-        printf(">3D|cube:P:0:0:0:R:%f:%f:\n", pitch_rad, roll_rad);
-        update_pixel_matrix(pitch_deg, roll_deg);
-        update_movinghead(&movinghead, pitch_deg - 40, roll_deg + 90);
+        update_pixel_matrix(tilt_deg, pan_deg);
+        update_movinghead(&movinghead, tilt_deg - 40, pan_deg + 90);
 
-        // printf(">3D|movinghead:R:%f:%f:%f\n", pitch_rad, roll_rad);
+        printf(">3D|cube:P:0:0:0:R:%f:%f:\n", tilt_rad, pan_rad);
+        // float spot_x = cosf(tilt_rad) * cosf(pan_rad);
+        // float spot_y = cosf(tilt_rad) * sinf(pan_rad);
+        // float spot_z = sinf(tilt_rad);
+        // printf(">3D|spot:P:%f:%f:%f\n", spot_x, spot_y, spot_z);
 
         sleep_ms(100);
     }
 }
 
-void update_movinghead(mh_x25_t *movinghead, float pitch, float roll)
+static void update_movinghead(mh_x25_t *movinghead, float pitch, float roll)
 {
     movinghead->pan_coarse = 127 + pitch;
     movinghead->tilt_coarse = 127 + roll;
@@ -88,7 +99,7 @@ void update_movinghead(mh_x25_t *movinghead, float pitch, float roll)
     dmx_send(dmx_buffer, 20); // 20 channels are sufficcient for now
 }
 
-void update_pixel_matrix(float pitch, float roll)
+static void update_pixel_matrix(float pitch, float roll)
 {
     uint8_t matrix_x = get_pixel_by_degree(pitch);
     uint8_t matrix_y = get_pixel_by_degree(roll);
@@ -98,7 +109,7 @@ void update_pixel_matrix(float pitch, float roll)
     led_strip_refresh(led_strip);
 }
 
-uint8_t get_pixel_by_degree(float degree)
+static uint8_t get_pixel_by_degree(float degree)
 {
     uint8_t pixel = 2;
 
@@ -114,7 +125,7 @@ uint8_t get_pixel_by_degree(float degree)
     return pixel;
 }
 
-void teleplot_init()
+static void teleplot_init()
 {
     printf("wait some time for teleplot...\n");
 
@@ -130,5 +141,19 @@ void teleplot_init()
     sleep_ms(1000);
 
     printf(">3D|cube:S:cube:P:0:0:0:W:7:H:1:D:5:C:blue\n");
+    // printf(">3D|spot:S:cube:P:10:0:0:W:2:H:2:D:2:R:0:0:0:C:yellow\n");
     // printf(">3D|movinghead:S:cube:P:0:10:0:W:10:H:2:D:2:C:red\n");
+}
+
+static void filter_value(float *filtered, float *new_value, float alpha)
+{
+    *filtered = (alpha * (*new_value)) + (1 - alpha) * (*filtered);
+}
+
+static void filter(imu_xyz_t *filtered, imu_xyz_t *new_data)
+{
+    static float alpha = 0.25;
+    filter_value(&filtered->x, &new_data->x, alpha);
+    filter_value(&filtered->y, &new_data->y, alpha);
+    filter_value(&filtered->z, &new_data->z, alpha);
 }
