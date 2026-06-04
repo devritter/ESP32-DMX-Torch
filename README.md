@@ -25,7 +25,7 @@ The ESP32 acts as an interactive controller, making the moving head behave like 
 * Stairville MH-X25 Moving Head (see [PDF](docs/stairville-mh-x25-manual.pdf))
   * DMX Start Address: 001
   * 12-channel mode (`A-Ch` at its display)
-* GME12864-11 OLED Screen (see [PDF](docs/GME12864-11%201.pdf))
+* GME12864-11 OLED Screen (see [PDF](docs/GME12864-11%201.pdf)) (uses the SSD1306 chip)
 
 ## Important
 

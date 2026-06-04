@@ -13,8 +13,17 @@ dependencies:
     source:
       type: idf
     version: 6.0.1
+  u8g2:
+    component_hash: a1e58bc54c33416c11a67add75dbbf29aa5c5fac0065b098254c2f99973c3735
+    dependencies: []
+    source:
+      git: https://github.com/olikraus/u8g2.git
+      path: .
+      type: git
+    version: a549a13b13b5fd568111557c1dd7ca3d06fbe21a
 direct_dependencies:
 - espressif/led_strip
-manifest_hash: 48f237caab2c174e512d06902b550ba183edc445e190b03a51037254d60ba9c7
+- u8g2
+manifest_hash: cbfafdc77c3e8cb6cc2c9aaa5d4d2c4b88c7716f24b5e7ff2e37bee5b79da34b
 target: esp32c3
 version: 3.0.0
