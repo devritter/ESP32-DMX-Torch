@@ -33,7 +33,7 @@ static mh_x25_t movinghead = {
     .tilt_coarse = 127,
     .shutter = 255,
     .color = 15,
-    .gobo = 60, // 60 = kleiner Punkt
+    .gobo = 0, // 60 = kleiner Punkt
     .speed = 127,
     .dimmer = 25};
 
@@ -84,7 +84,7 @@ void app_main(void)
 
         teleplot_send_cube(tilt_rad, pan_rad);
 
-        sleep_ms(100);
+        sleep_ms(10);
     }
 }
 
