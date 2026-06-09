@@ -44,7 +44,7 @@ void teleplot_send_cube(float tilt_rad, float pan_rad)
         return;
     }
 
-    printf(">3D|cube:P:0:0:0:R:%f:%f:\n", tilt_rad, pan_rad);
+    printf(">3D|cube:P:0:0:0:R:%f:%f:0\n", tilt_rad, pan_rad);
     // float spot_x = cosf(tilt_rad) * cosf(pan_rad);
     // float spot_y = cosf(tilt_rad) * sinf(pan_rad);
     // float spot_z = sinf(tilt_rad);

@@ -58,7 +58,7 @@ u8g2_t *display_init()
      * See: https://github.com/olikraus/u8g2/wiki/u8g2setupc
      */
     u8g2_Setup_ssd1306_i2c_128x64_noname_2(
-        &u8g2, U8G2_R0,
+        &u8g2, U8G2_R2,
         u8x8_byte_i2c_cb,  /* I2C communication callback */
         u8x8_gpio_delay_cb /* GPIO and delay callback */
     );

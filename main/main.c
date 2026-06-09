@@ -19,7 +19,6 @@
 #define DMX_COLOR_INDEX (6 - 1)
 #define LEN(x) (sizeof(x) / sizeof(x[0]))
 
-// static const char *TAG = "example";
 static led_strip_handle_t led_strip;
 static u8g2_t *display;
 static uint8_t dmx_buffer[512 + 1] = {0};
@@ -64,31 +63,24 @@ void app_main(void)
     {
         teleplot_init_once_if_button_pressed();
 
-        ESP_ERROR_CHECK(imu_read_gyro_data(&gyro_data_raw));
-        filter(&gyro_data_filtered, &gyro_data_raw);
-        // printf("Gyro: \t%.0f \t%.0f \t%.0f\n", gyro_data.x, gyro_data.y, gyro_data.z);
-
-        teleplot_send_imu("Gyro_raw_", &gyro_data_raw);
-        teleplot_send_imu("Gyro_filtered_", &gyro_data_filtered);
+        // ESP_ERROR_CHECK(imu_read_gyro_data(&gyro_data_raw));
+        // filter(&gyro_data_filtered, &gyro_data_raw);
+        // teleplot_send_imu("Gyro_raw_", &gyro_data_raw);
+        // teleplot_send_imu("Gyro_filtered_", &gyro_data_filtered);
 
         ESP_ERROR_CHECK(imu_read_acc_data(&acc_data_raw));
         filter(&acc_data_filtered, &acc_data_raw);
-        // printf("Acc: \t%f \t%f \t%f\n", acc_data.x, acc_data.y, acc_data.z);
-        // teleplot_send_imu("Acc_raw_", &acc_data_raw);
-        // teleplot_send_imu("Acc_filtered_", &acc_data_filtered);
+        teleplot_send_imu("Acc_raw_", &acc_data_raw);
+        teleplot_send_imu("Acc_filtered_", &acc_data_filtered);
 
-        // roll = x-axis, quasi die Achse des USB-C-Anschlusses
-        // pitch = y-axis, quasi die Achse ESP-Pixelmatrix
-        float pan_rad = atan2(acc_data_filtered.y, acc_data_filtered.z);
-        float tilt_rad = atan2(-acc_data_filtered.x, sqrt(acc_data_filtered.y * acc_data_filtered.y + acc_data_filtered.z * acc_data_filtered.z));
+        float pan_rad = atan2(-acc_data_filtered.x, sqrt(acc_data_filtered.y * acc_data_filtered.y + acc_data_filtered.z * acc_data_filtered.z));
+        float tilt_rad = atan2(acc_data_filtered.y, acc_data_filtered.z);
         float pan_deg = pan_rad * RAD_TO_DEG;
         float tilt_deg = tilt_rad * RAD_TO_DEG;
-        // printf("Roll: \t%f  \tPitch: \t%f\n", roll, pitch);
 
-        // printf(">traj:%f:%f|xy\n", pitch, roll);
-        update_pixel_matrix(tilt_deg, pan_deg);
-        update_movinghead(&movinghead, tilt_deg - 40, pan_deg + 90);
-        screen_main_render(display, &acc_data_filtered);
+        update_pixel_matrix(pan_deg, tilt_deg);
+        update_movinghead(&movinghead, pan_deg - 40, tilt_deg + 90);
+        screen_main_render(display, &acc_data_filtered, pan_deg, tilt_deg);
 
         teleplot_send_cube(tilt_rad, pan_rad);
 
@@ -96,18 +88,18 @@ void app_main(void)
     }
 }
 
-static void update_movinghead(mh_x25_t *movinghead, float pitch, float roll)
+static void update_movinghead(mh_x25_t *movinghead, float pan, float tilt)
 {
-    movinghead->pan_coarse = 127 + pitch;
-    movinghead->tilt_coarse = 127 + roll;
+    movinghead->pan_coarse = 127 + pan;
+    movinghead->tilt_coarse = 127 + tilt;
     mh_x25_fill_buffer(movinghead, dmx_buffer);
     dmx_send(dmx_buffer, 20); // 20 channels are sufficcient for now
 }
 
-static void update_pixel_matrix(float pitch, float roll)
+static void update_pixel_matrix(float pan, float tilt)
 {
-    uint8_t matrix_x = get_pixel_by_degree(pitch);
-    uint8_t matrix_y = get_pixel_by_degree(roll);
+    uint8_t matrix_x = get_pixel_by_degree(pan);
+    uint8_t matrix_y = get_pixel_by_degree(tilt);
 
     led_strip_clear(led_strip);
     my_led_matrix_set_pixel_xy(matrix_x, matrix_y);
