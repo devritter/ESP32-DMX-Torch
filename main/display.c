@@ -57,7 +57,7 @@ u8g2_t *display_init()
      * e.g. SSD1306, SH1106, SSD1327, etc.
      * See: https://github.com/olikraus/u8g2/wiki/u8g2setupc
      */
-    u8g2_Setup_ssd1306_i2c_128x64_noname_f(
+    u8g2_Setup_ssd1306_i2c_128x64_noname_2(
         &u8g2, U8G2_R0,
         u8x8_byte_i2c_cb,  /* I2C communication callback */
         u8x8_gpio_delay_cb /* GPIO and delay callback */
@@ -69,6 +69,8 @@ u8g2_t *display_init()
     ESP_LOGI(TAG, "Setting power mode...");
     u8g2_SetPowerSave(&u8g2, 0); /* Wake up display */
     ESP_LOGI(TAG, "Display initialization completed");
+
+    u8g2_SetFont(&u8g2, u8g2_font_5x7_tr);
 
     return &u8g2;
 }
