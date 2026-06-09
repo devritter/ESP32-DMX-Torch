@@ -156,10 +156,3 @@ esp_err_t imu_write(uint8_t addr, uint8_t data)
 
     return spi_device_polling_transmit(spi, &t);
 }
-
-void imu_teleplot(char *prefix, imu_xyz_t *data)
-{
-    printf(">%sx:%f\n", prefix, data->x);
-    printf(">%sy:%f\n", prefix, data->y);
-    printf(">%sz:%f\n", prefix, data->z);
-}

@@ -4,6 +4,7 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "sdkconfig.h"
+#include "buttons.h"
 #include "my_led_matrix.h"
 #include "my_spi.h"
 #include "display.h"
@@ -12,6 +13,7 @@
 #include "movinghead.h"
 #include "utils.h"
 #include "screen_main.h"
+#include "teleplot.h"
 
 #define RAD_TO_DEG 57.295779513f // 180 / PI
 #define DMX_COLOR_INDEX (6 - 1)
@@ -26,15 +28,24 @@ static imu_xyz_t acc_data_filtered = {};
 static imu_xyz_t gyro_data_filtered = {};
 static imu_xyz_t acc_data_raw = {};
 static imu_xyz_t gyro_data_raw = {};
+static mh_x25_t movinghead = {
+    .start_address = 1,
+    .pan_coarse = 127,
+    .tilt_coarse = 127,
+    .shutter = 255,
+    .color = 15,
+    .gobo = 60, // 60 = kleiner Punkt
+    .speed = 127,
+    .dimmer = 25};
 
 static uint8_t get_pixel_by_degree(float degree);
 static void update_pixel_matrix(float pitch, float roll);
 static void update_movinghead(mh_x25_t *movinghead, float pitch, float roll);
-static void teleplot_init();
 static void filter(imu_xyz_t *filtered, imu_xyz_t *new_data);
 
 void app_main(void)
 {
+    buttons_init();
     led_strip = my_led_matrix_setup(CONFIG_BLINK_GPIO);
     my_led_matrix_set_rgb(0, 0, 16);
 
@@ -49,31 +60,22 @@ void app_main(void)
     // mh_x25_demo(1);
     // movinghead_test();
 
-    mh_x25_t movinghead = {
-        .start_address = 1,
-        .pan_coarse = 127,
-        .tilt_coarse = 127,
-        .shutter = 255,
-        .color = 15,
-        .gobo = 60, // 60 = kleiner Punkt
-        .speed = 127,
-        .dimmer = 25};
-
-    // teleplot_init();
-
     while (1)
     {
+        teleplot_init_once_if_button_pressed();
+
         ESP_ERROR_CHECK(imu_read_gyro_data(&gyro_data_raw));
         filter(&gyro_data_filtered, &gyro_data_raw);
         // printf("Gyro: \t%.0f \t%.0f \t%.0f\n", gyro_data.x, gyro_data.y, gyro_data.z);
-        // imu_teleplot("Gyro_raw_", &gyro_data_raw);
-        // imu_teleplot("Gyro_filtered_", &gyro_data_filtered);
+
+        teleplot_send_imu("Gyro_raw_", &gyro_data_raw);
+        teleplot_send_imu("Gyro_filtered_", &gyro_data_filtered);
 
         ESP_ERROR_CHECK(imu_read_acc_data(&acc_data_raw));
         filter(&acc_data_filtered, &acc_data_raw);
         // printf("Acc: \t%f \t%f \t%f\n", acc_data.x, acc_data.y, acc_data.z);
-        // imu_teleplot("Acc_raw_", &acc_data_raw);
-        // imu_teleplot("Acc_filtered_", &acc_data_filtered);
+        // teleplot_send_imu("Acc_raw_", &acc_data_raw);
+        // teleplot_send_imu("Acc_filtered_", &acc_data_filtered);
 
         // roll = x-axis, quasi die Achse des USB-C-Anschlusses
         // pitch = y-axis, quasi die Achse ESP-Pixelmatrix
@@ -88,11 +90,7 @@ void app_main(void)
         update_movinghead(&movinghead, tilt_deg - 40, pan_deg + 90);
         screen_main_render(display, &acc_data_filtered);
 
-        // printf(">3D|cube:P:0:0:0:R:%f:%f:\n", tilt_rad, pan_rad);
-        // float spot_x = cosf(tilt_rad) * cosf(pan_rad);
-        // float spot_y = cosf(tilt_rad) * sinf(pan_rad);
-        // float spot_z = sinf(tilt_rad);
-        // printf(">3D|spot:P:%f:%f:%f\n", spot_x, spot_y, spot_z);
+        teleplot_send_cube(tilt_rad, pan_rad);
 
         sleep_ms(100);
     }
@@ -130,26 +128,6 @@ static uint8_t get_pixel_by_degree(float degree)
         pixel++;
 
     return pixel;
-}
-
-static void teleplot_init()
-{
-    printf("wait some time for teleplot...\n");
-
-    update_pixel_matrix(-25, -25);
-    sleep_ms(1000);
-    update_pixel_matrix(-15, -15);
-    sleep_ms(1000);
-    update_pixel_matrix(0, 0);
-    sleep_ms(1000);
-    update_pixel_matrix(15, 15);
-    sleep_ms(1000);
-    update_pixel_matrix(25, 25);
-    sleep_ms(1000);
-
-    printf(">3D|cube:S:cube:P:0:0:0:W:7:H:1:D:5:C:blue\n");
-    // printf(">3D|spot:S:cube:P:10:0:0:W:2:H:2:D:2:R:0:0:0:C:yellow\n");
-    // printf(">3D|movinghead:S:cube:P:0:10:0:W:10:H:2:D:2:C:red\n");
 }
 
 static void filter_value(float *filtered, float *new_value, float alpha)
