@@ -19,8 +19,9 @@
 #define RAD_TO_DEG 57.295779513f // 180 / PI
 #define DMX_COLOR_INDEX (6 - 1)
 #define LEN(x) (sizeof(x) / sizeof(x[0]))
+#define MH_PAN_OFFSET_DEG -40 // so it works better on the desk
+#define MH_TILT_OFFSET_DEG 90 // so it works better on the desk
 
-static led_strip_handle_t led_strip;
 static u8g2_t *display;
 static uint8_t dmx_buffer[512 + 1] = {0};
 
@@ -34,18 +35,16 @@ static mh_x25_t movinghead = {
     .tilt_coarse = 127,
     .shutter = 255,
     .color = 15,
-    .gobo = 0, // 60 = kleiner Punkt
+    .gobo = 0, // 0 = full beam, 60 = small dot
     .speed = 127,
     .dimmer = 25};
 
-static uint8_t get_pixel_by_degree(float degree);
-static void update_pixel_matrix(float pitch, float roll);
 static void update_movinghead(mh_x25_t *movinghead, float pitch, float roll);
 
 void app_main(void)
 {
     buttons_init();
-    led_strip = my_led_matrix_setup(CONFIG_BLINK_GPIO);
+    my_led_matrix_setup(CONFIG_BLINK_GPIO);
     my_led_matrix_set_rgb(0, 0, 16);
 
     spi_device_handle_t imu_spi_device = my_spi_init_for_imu();
@@ -63,6 +62,8 @@ void app_main(void)
     {
         teleplot_init_once_if_button_pressed();
 
+        // ### Read data ###
+
         // ESP_ERROR_CHECK(imu_read_gyro_data(&gyro_data_raw));
         // filter_imu(&gyro_data_filtered, &gyro_data_raw);
         // teleplot_send_imu("Gyro_raw_", &gyro_data_raw);
@@ -73,51 +74,31 @@ void app_main(void)
         teleplot_send_imu("Acc_raw_", &acc_data_raw);
         teleplot_send_imu("Acc_filtered_", &acc_data_filtered);
 
+        // ### Calculate angles ###
+
         float pan_rad = atan2(-acc_data_filtered.x, sqrt(acc_data_filtered.y * acc_data_filtered.y + acc_data_filtered.z * acc_data_filtered.z));
         float tilt_rad = atan2(acc_data_filtered.y, acc_data_filtered.z);
         float pan_deg = pan_rad * RAD_TO_DEG;
         float tilt_deg = tilt_rad * RAD_TO_DEG;
 
-        update_pixel_matrix(pan_deg, tilt_deg);
-        update_movinghead(&movinghead, pan_deg - 40, tilt_deg + 90);
-        screen_main_render(display, &acc_data_filtered, pan_deg, tilt_deg);
+        // ### Visualize data and send it to the MovingHead ###
 
+        my_led_matrix_show_pan_tilt(pan_deg, tilt_deg);
+        update_movinghead(&movinghead, pan_deg + MH_PAN_OFFSET_DEG, tilt_deg + MH_TILT_OFFSET_DEG);
+        screen_main_render(display, &acc_data_filtered, pan_deg, tilt_deg);
         teleplot_send_cube(tilt_rad, pan_rad);
 
+        // just some delay because faster processing isn't needed and we have some reserve for the future
         sleep_ms(10);
     }
 }
 
+// 
 static void update_movinghead(mh_x25_t *movinghead, float pan, float tilt)
 {
-    movinghead->pan_coarse = 127 + pan;
-    movinghead->tilt_coarse = 127 + tilt;
+    const uint8_t center_value = 127;
+    movinghead->pan_coarse = center_value + pan;
+    movinghead->tilt_coarse = center_value + tilt;
     mh_x25_fill_buffer(movinghead, dmx_buffer);
     dmx_send(dmx_buffer, 20); // 20 channels are sufficcient for now
-}
-
-static void update_pixel_matrix(float pan, float tilt)
-{
-    uint8_t matrix_x = get_pixel_by_degree(pan);
-    uint8_t matrix_y = get_pixel_by_degree(tilt);
-
-    led_strip_clear(led_strip);
-    my_led_matrix_set_pixel_xy(matrix_x, matrix_y);
-    led_strip_refresh(led_strip);
-}
-
-static uint8_t get_pixel_by_degree(float degree)
-{
-    uint8_t pixel = 2;
-
-    if (degree < -10)
-        pixel--;
-    if (degree < -20)
-        pixel--;
-    if (degree > 10)
-        pixel++;
-    if (degree > 20)
-        pixel++;
-
-    return pixel;
 }

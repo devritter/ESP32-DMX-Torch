@@ -220,3 +220,40 @@ esp_err_t my_led_matrix_clear_pixel_xy(uint8_t x, uint8_t y)
 
     return led_strip_set_pixel(led_strip, final_index, 0, 0, 0);
 }
+
+static uint8_t get_pixel_by_degree(float degree)
+{
+    uint8_t pixel = 2;
+
+    if (degree < -10)
+        pixel--;
+    if (degree < -20)
+        pixel--;
+    if (degree > 10)
+        pixel++;
+    if (degree > 20)
+        pixel++;
+
+    return pixel;
+}
+
+esp_err_t my_led_matrix_show_pan_tilt(float pan, float tilt)
+{
+    uint8_t matrix_x = get_pixel_by_degree(pan);
+    uint8_t matrix_y = get_pixel_by_degree(tilt);
+
+    esp_err_t ret = led_strip_clear(led_strip);
+    if (ret != ESP_OK)
+    {
+        return ret;
+    }
+
+    ret = my_led_matrix_set_pixel_xy(matrix_x, matrix_y);
+    if (ret != ESP_OK)
+    {
+        return ret;
+    }
+
+    ret = led_strip_refresh(led_strip);
+    return ret;
+}
