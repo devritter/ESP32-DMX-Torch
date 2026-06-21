@@ -9,6 +9,7 @@
 #include "my_spi.h"
 #include "display.h"
 #include "dmx.h"
+#include "filter.h"
 #include "imu.h"
 #include "movinghead.h"
 #include "utils.h"
@@ -24,9 +25,9 @@ static u8g2_t *display;
 static uint8_t dmx_buffer[512 + 1] = {0};
 
 static imu_xyz_t acc_data_filtered = {};
-static imu_xyz_t gyro_data_filtered = {};
+// static imu_xyz_t gyro_data_filtered = {};
 static imu_xyz_t acc_data_raw = {};
-static imu_xyz_t gyro_data_raw = {};
+// static imu_xyz_t gyro_data_raw = {};
 static mh_x25_t movinghead = {
     .start_address = 1,
     .pan_coarse = 127,
@@ -40,7 +41,6 @@ static mh_x25_t movinghead = {
 static uint8_t get_pixel_by_degree(float degree);
 static void update_pixel_matrix(float pitch, float roll);
 static void update_movinghead(mh_x25_t *movinghead, float pitch, float roll);
-static void filter(imu_xyz_t *filtered, imu_xyz_t *new_data);
 
 void app_main(void)
 {
@@ -64,12 +64,12 @@ void app_main(void)
         teleplot_init_once_if_button_pressed();
 
         // ESP_ERROR_CHECK(imu_read_gyro_data(&gyro_data_raw));
-        // filter(&gyro_data_filtered, &gyro_data_raw);
+        // filter_imu(&gyro_data_filtered, &gyro_data_raw);
         // teleplot_send_imu("Gyro_raw_", &gyro_data_raw);
         // teleplot_send_imu("Gyro_filtered_", &gyro_data_filtered);
 
         ESP_ERROR_CHECK(imu_read_acc_data(&acc_data_raw));
-        filter(&acc_data_filtered, &acc_data_raw);
+        filter_imu(&acc_data_filtered, &acc_data_raw);
         teleplot_send_imu("Acc_raw_", &acc_data_raw);
         teleplot_send_imu("Acc_filtered_", &acc_data_filtered);
 
@@ -120,17 +120,4 @@ static uint8_t get_pixel_by_degree(float degree)
         pixel++;
 
     return pixel;
-}
-
-static void filter_value(float *filtered, float *new_value, float alpha)
-{
-    *filtered = (alpha * (*new_value)) + (1 - alpha) * (*filtered);
-}
-
-static void filter(imu_xyz_t *filtered, imu_xyz_t *new_data)
-{
-    static float alpha = 0.25;
-    filter_value(&filtered->x, &new_data->x, alpha);
-    filter_value(&filtered->y, &new_data->y, alpha);
-    filter_value(&filtered->z, &new_data->z, alpha);
 }
